@@ -164,6 +164,11 @@ for(let i=0;i<6;i++){const c=document.createElement('span');c.className='cloud';
 function showPV(){ video.style.display='block'; document.getElementById('pvlabel').classList.add('hidden'); }
 video.addEventListener('loadeddata',showPV); video.addEventListener('canplay',showPV);
 if(video.readyState>=2) showPV();   // 先に読み込みが終わっていた場合
+video.addEventListener('playing',showPV);
+video.muted=true; video.defaultMuted=true; video.playsInline=true;
+let videoPrimed=false;
+function primeVideo(){ if(videoPrimed) return; videoPrimed=true;
+  try{ const p=video.play(); if(p) p.then(()=>{ if(!playing){ video.pause(); try{video.currentTime=0;}catch(e){} } }).catch(()=>{ videoPrimed=false; }); }catch(e){ videoPrimed=false; } }
 document.getElementById('pvfile').addEventListener('change',e=>{const f=e.target.files[0]; if(f){video.src=URL.createObjectURL(f);}});
 
 // ---- settings ----
@@ -240,6 +245,7 @@ function now(){ return playing ? actx.currentTime - t0 - offsetMs/1000 : 0; }
 const show=(id,on)=>document.getElementById(id).classList.toggle('hidden',!on);
 
 async function start(){
+  primeVideo();   // スマホ対策：ボタンを押した瞬間に動画を再生可能にしておく
   stopSong(); endClear();
   startBtn.disabled=true; startBtn.textContent='準備中…';
   try{ await ensureAudio(); }catch(e){ startBtn.textContent='曲を読み込めませんでした'; document.getElementById('audiopick').classList.remove('hidden'); return; }
@@ -249,14 +255,15 @@ async function start(){
   src=actx.createBufferSource(); src.buffer=buffer;
   songGain=actx.createGain(); songGain.gain.value=SONG_LEVEL; src.connect(songGain).connect(master);
   const lead=.6; t0=actx.currentTime+lead; src.start(t0);
-  if(video.style.display==='block'){ try{ video.currentTime=0; setTimeout(()=>video.play().catch(()=>{}), lead*1000);}catch(e){} }
+  try{ video.pause(); video.currentTime=0; }catch(e){}
+  setTimeout(()=>{ const p=video.play(); if(p) p.then(showPV).catch(()=>{}); }, lead*1000);
   playing=true; try{document.activeElement&&document.activeElement.blur();}catch(e){}
   show('title',false); show('resultBox',false); show('pauseBox',false); show('pauseBtn',true);
   ready();
 }
 function stopSong(){ playing=false; paused=false; try{src&&src.stop();}catch(e){} src=null; try{video.pause();}catch(e){} if(actx&&actx.state==='suspended') actx.resume(); show('pauseBtn',false); }
 function pause(){ if(!playing||paused) return; paused=true; actx.suspend(); try{video.pause();}catch(e){} show('pauseBox',true); }
-function resume(){ if(!paused) return; paused=false; show('pauseBox',false); actx.resume(); if(video.style.display==='block') video.play().catch(()=>{}); }
+function resume(){ if(!paused) return; paused=false; show('pauseBox',false); actx.resume(); if(video.style.display==='block'){ const p=video.play(); if(p) p.catch(()=>{}); } }
 function toTitle(){ stopSong(); endClear(); show('pauseBox',false); show('resultBox',false); show('title',true); }
 
 startBtn.addEventListener('click',start);
