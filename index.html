@@ -328,6 +328,10 @@ img{max-width:100%}
 
 <div style="flex: 1.4 1 460px; min-width: 0; background: #FFFFFF; border: 1px solid #E2D8C3; border-radius: 16px; padding: 32px">
 <form id="reqForm" style="display: flex; flex-direction: column; gap: 20px">
+<input type="hidden" name="access_key" value="7c179ca5-d519-4c66-bb5a-559e2d7d0fb5">
+<input type="hidden" name="subject" value="【羽根いろの記憶】お仕事のご依頼・ご相談">
+<input type="hidden" name="from_name" value="羽根いろの記憶 公式サイト">
+<input type="checkbox" name="botcheck" tabindex="-1" autocomplete="off" style="display: none">
 <input type="hidden" name="種類" id="kindField" value="キャラクター3Dモデル">
 <fieldset style="border: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px">
 <legend style="font-weight: 700; font-size: 14px; margin-bottom: 10px; padding: 0">ご依頼の種類</legend>
@@ -404,7 +408,7 @@ img{max-width:100%}
 // ===== 設定 =====
 // フォームの送信先（Formspreeなどで作ったURL）を入れると、送信できるようになります。
 // 空のままだと、送信ボタンを押したときに「準備中」の案内が出ます。
-const FORM_ENDPOINT = "";
+const FORM_ENDPOINT = "https://api.web3forms.com/submit";   // Web3Forms
 const CONTACT_TEXT = "準備中のため、XのDMからご連絡ください。"; // 準備中に出す案内
 
 const pills=document.querySelectorAll('.pill'), kind=document.getElementById('kindField');
@@ -416,7 +420,7 @@ form.addEventListener('submit',async e=>{
   btn.disabled=true; btn.textContent='送信中…';
   try{
     const r=await fetch(FORM_ENDPOINT,{method:'POST',body:new FormData(form),headers:{'Accept':'application/json'}});
-    if(!r.ok) throw new Error();
+    const j=await r.json().catch(()=>({})); if(!r.ok || j.success===false) throw new Error();
     document.getElementById('doneKind').textContent=kind.value; form.hidden=true; done.hidden=false; const k=kind.value; form.reset(); kind.value=k;
   }catch(err){ msg.textContent='送信できませんでした。時間をおいてもう一度お試しください。'; }
   btn.disabled=false; btn.textContent='相談内容を送る';
