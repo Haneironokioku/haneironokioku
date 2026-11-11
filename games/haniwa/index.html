@@ -56,7 +56,7 @@
     <div class="ov" id="title">
       <p class="tag">SPECIAL GAME PLAY ROOM</p>
       <h1>はにわのぼうけん</h1>
-      <p>ねむりからさめた はにわ。<br>ふしぎな国にちらばった「にじいろの羽根」をとりもどせ！</p>
+      <p>ねむりからさめた ねこはにわの「ねは」。<br>ふしぎな国にちらばった「にじいろの羽根」をとりもどせ！</p>
       <div class="cast" id="cast"></div>
       <p>←→ / A D：いどう　　スペース / W / ↑：ジャンプ<br>てきは 上からふむと たおせる　空中で もういちど押すと 二段ジャンプ<br>たいやき を とると ハートが かいふく</p>
       <div class="menu">
@@ -153,12 +153,20 @@ function mk(rows){ const h=rows.length,w=rows[0].length,c=document.createElement
 function flip(c){ const f=document.createElement('canvas'); f.width=c.width; f.height=c.height; const x=f.getContext('2d'); x.translate(c.width,0); x.scale(-1,1); x.drawImage(c,0,0); return f; }
 const IMG={}; for(const k in SPR){ IMG[k]=mk(SPR[k]); IMG[k+'_f']=flip(IMG[k]); }
 
+// ===== 描き下ろしドット（img/ フォルダ）があれば差し替え =====
+const CUSTOM={ neha:'はにわ.png', neha02:'はにわ02.png', bag:'ゴミぶくろン.png' };
+function loadImg(f){ return new Promise(r=>{ const im=new Image(); im.onload=()=>r(im); im.onerror=()=>r(null); im.src='img/'+encodeURIComponent(f); }); }
+Promise.all(Object.entries(CUSTOM).map(([k,f])=>loadImg(f).then(im=>[k,im]))).then(list=>{
+  for(const [k,im] of list){ if(!im) continue; const c=document.createElement('canvas'); c.width=im.width; c.height=im.height;
+    c.getContext('2d').drawImage(im,0,0); IMG[k]=c; IMG[k+'_f']=flip(c); }
+  buildCast();
+});
 // title cast + hearts
-(function(){ const cast=document.getElementById('cast');
-  [['haniwa','はにわ'],['bag','ゴミぶくろン'],['can','カンカン'],['pin','とびばさみ'],['tako','たこやきん']].forEach(([k,n])=>{
+function buildCast(){ const cast=document.getElementById('cast'); cast.innerHTML='';
+  [[IMG.neha?'neha':'haniwa','ねは'],['bag','ゴミぶくろン'],['can','カンカン'],['pin','とびばさみ'],['tako','たこやきん']].forEach(([k,n])=>{
     const f=document.createElement('figure'); const c=document.createElement('canvas'); c.width=IMG[k].width; c.height=IMG[k].height;
     c.getContext('2d').drawImage(IMG[k],0,0); c.style.imageRendering='pixelated'; f.appendChild(c); const s=document.createElement('figcaption'); s.textContent=n; f.appendChild(s); cast.appendChild(f); });
-})();
+}
 
 // ===================== screen =====================
 const VW=320, VH=192, T=16, ROWS=12;
@@ -306,7 +314,7 @@ function reset(){
   spawnPlayer(checkpoint.x,checkpoint.y);
   updateHud();
 }
-function spawnPlayer(x,y){ P={x,y,w:10,h:15,vx:0,vy:0,onGround:false,face:1,inv:60,coyote:0,buf:0,anim:0,air:1,fresh:false}; }
+function spawnPlayer(x,y){ P={x,y,w:12,h:17,nextBlink:frames+90,blinkUntil:0,vx:0,vy:0,onGround:false,face:1,inv:60,coyote:0,buf:0,anim:0,air:1,fresh:false}; }
 let inputLock=0, goalT=0, noiseBuf=null;
 function noise(){ if(!noiseBuf){ noiseBuf=ac.createBuffer(1,ac.sampleRate,ac.sampleRate); const d=noiseBuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; } return noiseBuf; }
 function boom(){ if(!ac) return; const t=ac.currentTime;
@@ -430,7 +438,11 @@ function render(){
     else drawSprite(e.t,e.x,e.y,e.dir>0);
   }
   if(!(P.inv>0 && Math.floor(frames/4)%2)){ const bob = P.onGround && Math.abs(P.vx)>.2 ? (Math.floor(P.anim/6)%2) : 0;
-    const name = !P.onGround ? 'haniwa2' : (bob?'haniwa2':'haniwa'); drawSprite(name,P.x-1,P.y-1-bob,P.face<0); }
+    if(IMG.neha){ // ねは：ときどきまばたき（はにわ02）
+      if(frames>=P.nextBlink){ P.blinkUntil=frames+12; P.nextBlink=frames+120+Math.floor(Math.random()*120); }
+      const blink = frames<P.blinkUntil && IMG.neha02;
+      drawSprite(blink?'neha02':'neha', P.x+P.w/2-IMG.neha.width/2, P.y+P.h-IMG.neha.height-bob, P.face<0);
+    } else { const name = !P.onGround ? 'haniwa2' : (bob?'haniwa2':'haniwa'); drawSprite(name,P.x,P.y+P.h-16-bob,P.face<0); } }
   for(const p of parts){ if(p.fw && p.life<14 && frames%3===0) continue; g.fillStyle=p.col; g.fillRect(Math.round(p.x-cam),Math.round(p.y),2,2); }
 }
 
